@@ -1,0 +1,234 @@
+@baseUrl = http://localhost:3001
+@authToken = paste-owner-or-admin-jwt-here
+@invoiceId = paste-invoice-id-here
+@inviteToken = paste-invite-token-here
+@successUrl = http://localhost:5173/dashboard?stripe=success
+@cancelUrl = http://localhost:5173/dashboard?stripe=cancelled
+
+###
+# Auth: create organization and owner
+POST {{baseUrl}}/tenant-signup
+Content-Type: application/json
+
+{
+  "organizationName": "Opash Software",
+  "email": "owner@example.com",
+  "password": "123456"
+}
+
+###
+# Auth: register standalone user
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "email": "member@example.com",
+  "password": "123456",
+  "role": "member"
+}
+
+###
+# Auth: login and copy token into @authToken
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "owner@example.com",
+  "password": "123456"
+}
+
+###
+# Profile: current user
+GET {{baseUrl}}/profile
+Authorization: Bearer {{authToken}}
+
+###
+# Users: list users
+GET {{baseUrl}}/users
+
+###
+# Invitations: invite teammate
+POST {{baseUrl}}/invite
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "email": "admin@example.com",
+  "role": "admin"
+}
+
+###
+# Invitations: pending invites
+GET {{baseUrl}}/invites
+Authorization: Bearer {{authToken}}
+
+###
+# Invitations: accept invite
+POST {{baseUrl}}/invite/accept
+Content-Type: application/json
+
+{
+  "token": "{{inviteToken}}",
+  "email": "admin@example.com",
+  "password": "123456"
+}
+
+###
+# Team: members
+GET {{baseUrl}}/team/members
+Authorization: Bearer {{authToken}}
+
+###
+# Workspace: summary
+GET {{baseUrl}}/workspace/summary
+Authorization: Bearer {{authToken}}
+
+###
+# Clients: create client
+POST {{baseUrl}}/clients
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "name": "Acme Corp",
+  "taxId": "ACME-123",
+  "billingAddress": "42 Market Street, Bengaluru",
+  "currency": "INR"
+}
+
+###
+# Clients: list clients
+GET {{baseUrl}}/clients
+Authorization: Bearer {{authToken}}
+
+###
+# Invoices: create invoice
+POST {{baseUrl}}/invoices
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "clientName": "Acme Corp",
+  "invoiceNumber": "INV-1001",
+  "status": "pending",
+  "dueDate": "2026-07-02",
+  "lineItems": [
+    {
+      "description": "Implementation support",
+      "quantity": 2,
+      "unitPrice": 2500
+    }
+  ],
+  "taxRate": 18,
+  "discountAmount": 0
+}
+
+###
+# Invoices: list invoices
+GET {{baseUrl}}/invoices
+Authorization: Bearer {{authToken}}
+
+###
+# Invoices: update status
+PATCH {{baseUrl}}/invoices/{{invoiceId}}/status
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "status": "paid"
+}
+
+###
+# Payments: create payment
+POST {{baseUrl}}/payments
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "clientName": "Acme Corp",
+  "amount": 5900,
+  "provider": "Razorpay",
+  "status": "succeeded",
+  "paidAt": "2026-06-02"
+}
+
+###
+# Payments: list payments
+GET {{baseUrl}}/payments
+Authorization: Bearer {{authToken}}
+
+###
+# Stripe: create one-off Checkout Session
+# Requires STRIPE_SECRET_KEY in server/.env.local
+POST {{baseUrl}}/stripe/checkout/one-off
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "clientName": "Acme Corp",
+  "description": "One-off onboarding payment",
+  "amount": 2500,
+  "currency": "inr",
+  "successUrl": "{{successUrl}}",
+  "cancelUrl": "{{cancelUrl}}"
+}
+
+###
+# Stripe: create subscription Checkout Session
+# Requires STRIPE_SECRET_KEY in server/.env.local
+POST {{baseUrl}}/stripe/checkout/subscription
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "clientName": "Acme Corp",
+  "planName": "Stripe Growth",
+  "amount": 4999,
+  "billingCycle": "monthly",
+  "currency": "inr",
+  "successUrl": "{{successUrl}}",
+  "cancelUrl": "{{cancelUrl}}"
+}
+
+###
+# Stripe webhook setup:
+# 1) Add STRIPE_WEBHOOK_SECRET in server/.env.local.
+# 2) Forward test events with:
+#    stripe listen --forward-to localhost:3001/stripe/webhook
+# 3) Configure/listen for these events:
+#    payment_intent.succeeded
+#    payment_intent.payment_failed
+#    invoice.payment_succeeded
+#    invoice.payment_failed
+#    customer.subscription.updated
+
+###
+# Subscriptions: create monthly plan and auto-generate invoice
+POST {{baseUrl}}/subscriptions
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "clientName": "Acme Corp",
+  "planName": "Growth",
+  "amount": 4999,
+  "billingCycle": "monthly"
+}
+
+###
+# Subscriptions: create yearly plan and auto-generate invoice
+POST {{baseUrl}}/subscriptions
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "clientName": "Acme Corp",
+  "planName": "Enterprise",
+  "amount": 49999,
+  "billingCycle": "yearly"
+}
+
+###
+# Subscriptions: list subscriptions
+GET {{baseUrl}}/subscriptions
+Authorization: Bearer {{authToken}}
